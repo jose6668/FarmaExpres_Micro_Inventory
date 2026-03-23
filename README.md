@@ -17,7 +17,7 @@ Este microservicio permite:
 
 ## Tecnologías utilizadas
 
-- Java 17
+-- Java 17
 - Spring Boot
 - Spring Web MVC
 - Spring Data JPA
@@ -27,6 +27,8 @@ Este microservicio permite:
 - Maven
 - Docker
 - Spring Boot Actuator
+- Spring REST Docs / Asciidoctor
+- Lombok
 
 Estas dependencias se observan en el `pom.xml`, junto con soporte de pruebas y documentación con REST Docs/Asciidoctor.
 
@@ -36,21 +38,45 @@ Estas dependencias se observan en el `pom.xml`, junto con soporte de pruebas y d
 inventory-service/
 ├── Dockerfile
 ├── pom.xml
-├── mvnw / mvnw.cmd
-├── src/
-│   ├── main/
-│   │   ├── java/co/edu/corhuila/inventory_service/
-│   │   │   ├── Config/
-│   │   │   ├── Controllers/
-│   │   │   ├── Dto/
-│   │   │   ├── Entity/
-│   │   │   ├── Repository/
-│   │   │   ├── Service/
-│   │   │   └── exception/
-│   │   └── resources/
-│   │       └── application.yaml
-│   └── test/
-```
+├── mvnw
+├── mvnw.cmd
+├── .mvn/
+└── src/
+    ├── main/
+    │   ├── java/co/edu/corhuila/inventory_service/
+    │   │   ├── Config/
+    │   │   │   └── SecurityConfig.java
+    │   │   ├── Controllers/
+    │   │   │   ├── ProductController.java
+    │   │   │   └── MotionController.java
+    │   │   ├── Dto/
+    │   │   │   ├── ApiErrorResponse.java
+    │   │   │   ├── MotionResponse.java
+    │   │   │   └── ProductOutOfStockResponse.java
+    │   │   ├── Entity/
+    │   │   │   ├── Product.java
+    │   │   │   ├── Motion.java
+    │   │   │   └── MovementType.java
+    │   │   ├── Repository/
+    │   │   │   ├── ProductRepository.java
+    │   │   │   └── MotionRepository.java
+    │   │   ├── Service/
+    │   │   │   ├── ProductService.java
+    │   │   │   ├── MotionService.java
+    │   │   │   ├── JwtService.java
+    │   │   │   └── JwtFilter.java
+    │   │   ├── exception/
+    │   │   │   └── GlobalExceptionHandler.java
+    │   │   ├── InventoryServiceApplication.java
+    │   │   └── StatusController.java
+    │   └── resources/
+    │       └── application.yaml
+    └── test/
+        └── java/co/edu/corhuila/inventory_service/
+            ├── InventoryServiceApplicationTests.java
+            ├── productControllerIntegrationTest.java
+            └── Service/
+                └── JwtFilterTest.java
 
 La estructura sigue una organización por capas: controlador, servicio, repositorio, entidades, DTOs y manejo global de errores.
 
@@ -62,12 +88,12 @@ El microservicio adopta una arquitectura por capas:
 Expone la API REST a través de controladores Spring.
 
 Ejemplo principal:
-- `ProductoController` bajo la ruta base `/api/products`.
+- `ProductController` bajo la ruta base `/api/products`.
 
 ### 2. Capa de negocio
 Implementa las reglas del dominio relacionadas con productos y movimientos.
 
-- `ProductoService` valida duplicidad de código, actualiza stock, realiza eliminación lógica y registra movimientos de inventario.
+- `ProductService` valida duplicidad de código, actualiza stock, realiza eliminación lógica y registra movimientos de inventario.
 
 ### 3. Capa de persistencia
 Gestiona acceso a base de datos mediante Spring Data JPA.
@@ -83,27 +109,27 @@ Incluye seguridad, manejo de errores y observabilidad.
 
 ## Modelo de dominio
 
-### Producto
-La entidad `Producto` representa un artículo de inventario e incluye, entre otros, los siguientes atributos:
+### Product
+La entidad `Product` representa un artículo de inventario e incluye, entre otros, los siguientes atributos:
 
 - `id`
-- `nombre`
-- `codigo` (único)
+- `name`
+- `code` (único)
 - `stock`
-- `precio`
-- `activo`
-- `fechavencimiento`
+- `unitPrice`
+- `active`
+- `expirationDate`
 
-La eliminación de productos se maneja de forma lógica mediante el atributo `activo`.
+La eliminación de productos se maneja de forma lógica mediante el atributo `active`.
 
-### Movimiento
+### Motion
 La entidad `Movimiento` registra cambios relevantes del inventario:
 
 - `id`
-- `tipo`
-- `cantidad`
-- `fecha`
-- relación con `Producto`
+- `type`
+- `amount`
+- `date`
+- relación con `Product`
 
 Esto permite trazabilidad sobre entradas, salidas, actualizaciones y eliminaciones.
 
@@ -111,10 +137,10 @@ Esto permite trazabilidad sobre entradas, salidas, actualizaciones y eliminacion
 
 A partir del servicio actual, se identifican estas reglas:
 
-- No se puede crear un producto con un `codigo` ya existente.
-- Al crear un producto, se registra un movimiento de tipo `ENTRADA`.
-- Al actualizar stock, se registra el movimiento correspondiente (`ENTRADA`, `SALIDA` o `ACTUALIZADO`).
-- Al eliminar un producto, no se borra físicamente: se marca como inactivo y se registra un movimiento de `ELIMINACION`.
+- No se puede crear un producto con un `code` ya existente.
+- Al crear un producto, se registra un movimiento de tipo `Entrance`.
+- Al actualizar stock, se registra el movimiento correspondiente (`Entrance`, `Exit` o `Updated`).
+- Al eliminar un producto, no se borra físicamente: se marca como inactivo y se registra un movimiento de `Deleted`.
 - Existe una consulta especializada para productos sin stock.
 
 ## Seguridad
@@ -253,8 +279,8 @@ POST   /api/products
 PUT    /api/products/{id}
 DELETE /api/products/{id}
 GET    /api/products
-GET    /api/products/activos
-GET    /api/products/sin-stock
+GET    /api/products/Assets
+GET    /api/products/out-of-stock
 ```
 
 La API también acepta `/api/products/Assets` como ruta alternativa para productos activos, aunque sería preferible unificar la convención de nombres.
@@ -263,15 +289,15 @@ La API también acepta `/api/products/Assets` como ruta alternativa para product
 
 ```json
 {
-  "nombre": "Acetaminofén 500mg",
-  "codigo": "MED-001",
+  "name": "Acetaminofén 500mg",
+  "code": "MED-001",
   "stock": 100,
-  "precio": 8500,
-  "fechavencimiento": "2027-12-31"
+  "unitPrice": 8500,
+  "expirationDate": "2027-12-31"
 }
 ```
 
-Campos esperados según la entidad `Producto`.
+Campos esperados según la entidad `Product`.
 
 ## Respuestas de error
 
