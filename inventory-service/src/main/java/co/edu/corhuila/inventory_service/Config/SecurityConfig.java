@@ -40,9 +40,17 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
 
-                        // ADMIN y EMPLEADO pueden ver productos
-                        .requestMatchers(HttpMethod.GET, "/api/products/**").hasAnyRole("ADMIN","EMPLEADO")
+                        
+
+                        // ADMIN, FARMACEUTICO y AUDITOR pueden ver productos
+                        .requestMatchers(HttpMethod.GET, "/api/products/**").hasAnyRole("ADMIN","FARMACEUTICO", "AUDITOR")
                         .anyRequest().authenticated()
+
+                         // ADMIN y AUDITOR pueden ver Movimientos
+                        .requestMatchers(HttpMethod.GET, "/api/Motion/**").hasAnyRole("ADMIN", "AUDITOR")
+                        .anyRequest().authenticated()
+
+
                 )
                 .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
 
