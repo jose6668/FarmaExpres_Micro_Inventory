@@ -25,7 +25,9 @@ public class ProductService {
         this.motionRepository = motionRepository;
     }
 
-    public Product createProduct(Product product) {
+        // Método para crear un nuevo producto
+        public Product createProduct(Product product) {
+        validateProductData(product);
 
         if (productRepository.existsByCode(product.getCode())) {
             throw new ResponseStatusException(
@@ -41,70 +43,67 @@ public class ProductService {
                 productSaved.getStock(),
                 productSaved
         );
-
         motionRepository.save(motion);
 
         return productSaved;
     }
 
-    public Product getById(Long id) {
-        return productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Producto no encontrado"
-                ));
-    }
-
-
+    // Método para actualizar un producto existente
     @Transactional
-    public Product updateProduct(Long id, Product Updateddata) {
-
+    public Product updateProduct(Long id, Product updatedData) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Producto no encontrado"
                 ));
 
-        Integer Previousstock = product.getStock();
-        // Actualizar datos
-        product.setName(Updateddata.getName());
-        product.setUnitPrice(Updateddata.getUnitPrice());
-        product.setStock(Updateddata.getStock());
+        if (!product.isActive()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "No se puede modificar un producto eliminado"
+            );
+        }
+
+        validateProductData(updatedData);
+
+        Integer previousStock = product.getStock();
+
+        product.setName(updatedData.getName());
+        product.setUnitPrice(updatedData.getUnitPrice());
+        product.setStock(updatedData.getStock());
+        product.setMinimumStock(updatedData.getMinimumStock());
+        product.setExpirationDate(updatedData.getExpirationDate());
+
         Product productSaved = productRepository.save(product);
-        // Determinar tipo de movimiento
-        Integer Newstock = Updateddata.getStock();
+
+        Integer newStock = updatedData.getStock();
         MovementType movementType;
         Integer quantityMovement;
-        if (!product.isActive()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "No se puede modificar un producto eliminado");
 
-        }else if (Newstock > Previousstock ) {
+        if (newStock > previousStock) {
             movementType = MovementType.Entrance;
-            quantityMovement = Newstock - Previousstock;
-        } else if (Newstock < Previousstock) {
+            quantityMovement = newStock - previousStock;
+        } else if (newStock < previousStock) {
             movementType = MovementType.Exit;
-            quantityMovement = Previousstock - Newstock;
+            quantityMovement = previousStock - newStock;
         } else {
             movementType = MovementType.Updated;
             quantityMovement = 0;
         }
 
-        // Registrar movimiento
         Motion motion = new Motion(
                 movementType,
                 quantityMovement,
                 productSaved
         );
-
         motionRepository.save(motion);
 
         return productSaved;
     }
 
+    // Método para eliminar un producto 
     @Transactional
     public void removeProduct(Long id) {
-
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
@@ -114,34 +113,45 @@ public class ProductService {
         product.setActive(false);
         productRepository.save(product);
 
-        // Registrar movimiento de eliminación
         Motion motion = new Motion(
                 MovementType.Deleted,
                 product.getStock(),
                 product
         );
-
         motionRepository.save(motion);
-
     }
 
+    // Método para listar todos los productos
     public List<Product> listProducts() {
         return productRepository.findAll();
-
     }
-    
+    // Método para listar solo los productos activos
+
     public List<Product> listActiveProducts() {
-    return productRepository.findByActiveTrue();
+        return productRepository.findByActiveTrue();
     }
-
+    // Método para listar productos que estan vacios
     public List<ProductOutOfStockResponse> outOfStockProducts() {
-    return productRepository.findByStockAndActiveTrue(0)
-            .stream()
-            .map(ProductOutOfStockResponse::new)
-            .toList();
+        return productRepository.findByStockAndActiveTrue(0)
+                .stream()
+                .map(ProductOutOfStockResponse::new)
+                .toList();
     }
 
-   
+        // Método para validar los datos del producto
+    private void validateProductData(Product product) {
+        if (product.getStock() == null || product.getStock() < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El stock debe ser mayor o igual a 0"
+            );
+        }
 
+        if (product.getMinimumStock() == null || product.getMinimumStock() < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "El stock mínimo debe ser mayor o igual a 0"
+            );
+        }
+    }
 }
-

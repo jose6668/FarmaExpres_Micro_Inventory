@@ -29,19 +29,25 @@ public class Product {
     @Column(name = "asset", nullable = false)
     private Boolean active = true;
 
+    @Column(name = "minimumstock", nullable = false)
+    private Integer minimumStock;
+
     @Column(name = "expirationdate", nullable = false)
     private LocalDate expirationDate;
+
+    
 
     public Product() {
     }
 
-    public Product(String name, String code, Integer stock, BigDecimal unitPrice, LocalDate expirationDate) {
+    public Product(String name, String code, Integer stock, BigDecimal unitPrice, LocalDate expirationDate, Integer minimumStock) {
         this.name = name;
         this.code = code;
         this.stock = stock;
         this.unitPrice = unitPrice;
         this.active = true;
         this.expirationDate = expirationDate;
+        this.minimumStock = minimumStock;
     }
 
     public Long getId() {
@@ -106,5 +112,13 @@ public class Product {
 
     public boolean isActive() {
     return active;
+    }
+
+    public Integer getMinimumStock() {
+        return minimumStock;
+    }
+
+    public void setMinimumStock(Integer minimumStock) {
+        this.minimumStock = minimumStock;
     }
 }
