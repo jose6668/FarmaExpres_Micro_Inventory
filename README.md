@@ -1,323 +1,452 @@
 # FarmaExpres_Micro_Inventory
 
 
-Microservicio encargado de la gestión de inventario dentro del ecosistema **FarmaExpres**. Su responsabilidad principal es administrar productos, controlar stock disponible y registrar movimientos de inventario generados por las operaciones del servicio.
+### Overview
+`inventory-service` is a Spring Boot microservice responsible for product inventory management in the FarmaExpres ecosystem.
 
-## Objetivo
+It provides:
+- Product creation and administration
+- Product update with stock and minimum stock control
+- Logical product deletion
+- Product listing and active product filtering
+- Out-of-stock product queries
+- Inventory movement tracking
+- Service health and status endpoints
 
-Este microservicio permite:
+---
 
-- Registrar productos en inventario.
-- Consultar productos disponibles y activos.
-- Actualizar información de productos y existencias.
-- Realizar eliminación lógica de productos.
-- Identificar productos sin stock.
-- Registrar movimientos de inventario para trazabilidad.
-- Exponer endpoints básicos de monitoreo y estado del servicio.
+## Technologies Used
 
-## Tecnologías utilizadas
+- **Java 17**
+- **Spring Boot**
+- **Spring Security**
+- **JWT**
+- **PostgreSQL**
+- **Spring Data JPA / Hibernate**
+- **Maven**
+- **Docker**
+- **Spring Boot Actuator**
 
--- Java 17
-- Spring Boot
-- Spring Web MVC
-- Spring Data JPA
-- Spring Security
-- JWT
-- PostgreSQL
-- Maven
-- Docker
-- Spring Boot Actuator
-- Spring REST Docs / Asciidoctor
-- Lombok
+---
 
-Estas dependencias se observan en el `pom.xml`, junto con soporte de pruebas y documentación con REST Docs/Asciidoctor.
+## Implemented Architecture
 
-## Estructura del proyecto
+The service follows a layered architecture:
+
+- **Controllers**: expose REST endpoints
+- **Services**: implement business logic
+- **Repositories**: manage persistence with Spring Data JPA
+- **Entities**: represent domain objects
+- **DTOs**: define request and response payloads
+- **Config**: security and filter configuration
+- **Exception Handling**: centralized error handling with `GlobalExceptionHandler`
+
+---
+
+## Project Structure
 
 ```text
 inventory-service/
+├── src/main/java/co/edu/corhuila/inventory_service/
+│   ├── InventoryServiceApplication.java
+│   ├── Config/
+│   │   └── SecurityConfig.java
+│   ├── Controllers/
+│   │   ├── ProductController.java
+│   │   ├── MotionController.java
+│   │   └── StatusController.java
+│   ├── Service/
+│   │   ├── ProductService.java
+│   │   ├── MotionService.java
+│   │   ├── JwtFilter.java
+│   │   └── JwtService.java
+│   ├── Entity/
+│   │   ├── Product.java
+│   │   ├── Motion.java
+│   │   └── MovementType.java
+│   ├── Repository/
+│   │   ├── ProductRepository.java
+│   │   └── MotionRepository.java
+│   ├── Dto/
+│   │   ├── ApiErrorResponse.java
+│   │   ├── MotionResponse.java
+│   │   └── ProductOutOfStockResponse.java
+│   └── exception/
+│       └── GlobalExceptionHandler.java
+├── src/main/resources/
+│   └── application.yaml
 ├── Dockerfile
 ├── pom.xml
-├── mvnw
-├── mvnw.cmd
-├── .mvn/
-└── src/
-    ├── main/
-    │   ├── java/co/edu/corhuila/inventory_service/
-    │   │   ├── Config/
-    │   │   │   └── SecurityConfig.java
-    │   │   ├── Controllers/
-    │   │   │   ├── ProductController.java
-    │   │   │   └── MotionController.java
-    │   │   ├── Dto/
-    │   │   │   ├── ApiErrorResponse.java
-    │   │   │   ├── MotionResponse.java
-    │   │   │   └── ProductOutOfStockResponse.java
-    │   │   ├── Entity/
-    │   │   │   ├── Product.java
-    │   │   │   ├── Motion.java
-    │   │   │   └── MovementType.java
-    │   │   ├── Repository/
-    │   │   │   ├── ProductRepository.java
-    │   │   │   └── MotionRepository.java
-    │   │   ├── Service/
-    │   │   │   ├── ProductService.java
-    │   │   │   ├── MotionService.java
-    │   │   │   ├── JwtService.java
-    │   │   │   └── JwtFilter.java
-    │   │   ├── exception/
-    │   │   │   └── GlobalExceptionHandler.java
-    │   │   ├── InventoryServiceApplication.java
-    │   │   └── StatusController.java
-    │   └── resources/
-    │       └── application.yaml
-    └── test/
-        └── java/co/edu/corhuila/inventory_service/
-            ├── InventoryServiceApplicationTests.java
-            ├── productControllerIntegrationTest.java
-            └── Service/
-                └── JwtFilterTest.java
+└── mvnw*
+```
 
-La estructura sigue una organización por capas: controlador, servicio, repositorio, entidades, DTOs y manejo global de errores.
+---
 
-## Arquitectura general
+## Domain Model
 
-El microservicio adopta una arquitectura por capas:
-
-### 1. Capa de presentación
-Expone la API REST a través de controladores Spring.
-
-Ejemplo principal:
-- `ProductController` bajo la ruta base `/api/products`.
-
-### 2. Capa de negocio
-Implementa las reglas del dominio relacionadas con productos y movimientos.
-
-- `ProductService` valida duplicidad de código, actualiza stock, realiza eliminación lógica y registra movimientos de inventario.
-
-### 3. Capa de persistencia
-Gestiona acceso a base de datos mediante Spring Data JPA.
-
-- Repositorios para entidades de productos y movimientos.
-
-### 4. Capa transversal
-Incluye seguridad, manejo de errores y observabilidad.
-
-- Seguridad basada en JWT y roles.
-- Manejo global de excepciones con `GlobalExceptionHandler`.
-- Actuator para salud e información del servicio.
-
-## Modelo de dominio
+The inventory-service is built around three main domain components:
 
 ### Product
-La entidad `Product` representa un artículo de inventario e incluye, entre otros, los siguientes atributos:
+Represents an inventory product managed by the service.
 
-- `id`
-- `name`
-- `code` (único)
-- `stock`
-- `unitPrice`
-- `active`
-- `expirationDate`
+**Main attributes:**
+- `id`: unique product identifier
+- `name`: product name
+- `code`: unique product code
+- `stock`: current stock available
+- `minimumStock`: minimum stock threshold
+- `unitPrice`: unit price of the product
+- `active`: logical state of the product
+- `expirationDate`: product expiration date
 
-La eliminación de productos se maneja de forma lógica mediante el atributo `active`.
+**Responsibilities:**
+- Store inventory product information
+- Maintain stock and minimum stock values
+- Support logical deletion through the `active` field
+- Provide the base entity for inventory movement registration
+
+---
 
 ### Motion
-La entidad `Movimiento` registra cambios relevantes del inventario:
+Represents an inventory movement generated by product operations.
 
-- `id`
-- `type`
-- `amount`
-- `date`
-- relación con `Product`
+**Main attributes:**
+- `id`: unique movement identifier
+- `type`: type of inventory movement
+- `amount`: quantity associated with the movement
+- `dateTime`: date and time of the event
+- `product`: related product
 
-Esto permite trazabilidad sobre entradas, salidas, actualizaciones y eliminaciones.
+**Responsibilities:**
+- Track inventory changes over time
+- Register stock entries, exits, updates, and deletions
+- Provide traceability for inventory operations
 
-## Reglas de negocio implementadas
+---
 
-A partir del servicio actual, se identifican estas reglas:
+### MovementType
+Represents the type of movement registered in inventory operations.
 
-- No se puede crear un producto con un `code` ya existente.
-- Al crear un producto, se registra un movimiento de tipo `Entrance`.
-- Al actualizar stock, se registra el movimiento correspondiente (`Entrance`, `Exit` o `Updated`).
-- Al eliminar un producto, no se borra físicamente: se marca como inactivo y se registra un movimiento de `Deleted`.
-- Existe una consulta especializada para productos sin stock.
+**Supported values:**
+- `Entrance`
+- `Updated`
+- `Exit`
+- `Deleted`
 
-## Seguridad
+This enum is used to classify the reason and nature of each movement recorded in the system.
 
-La seguridad está implementada con Spring Security y un filtro JWT. El comportamiento observado es:
+---
 
-- Público:
-  - `/status`
-  - `/actuator/health`
-  - `/actuator/info`
-- Solo `ADMIN`:
-  - `POST /api/products/**`
-  - `PUT /api/products/**`
-  - `DELETE /api/products/**`
-- `ADMIN` o `EMPLEADO`:
-  - `GET /api/products/**`
+## Main Endpoints
 
-La validación del token se realiza antes del filtro estándar de autenticación de Spring.
+The service exposes endpoints for product management, inventory movement queries, and health monitoring.
 
-## Configuración
+### 1. Product Management
 
-El archivo `application.yaml` define:
+#### `POST /api/products`
+Creates a new product.
 
-- Puerto del servicio: `8082`
-- Nombre de la aplicación: `inventory-service`
-- Conexión a PostgreSQL mediante variables de entorno
-- Exposición de endpoints `health` e `info`
-- Secreto JWT por variable de entorno
-
-Variables requeridas:
-
-```env
-DB_URL=
-DB_USERNAME=
-DB_PASSWORD=
-JWT_SECRET=
-```
-
-La configuración actual usa `spring.jpa.hibernate.ddl-auto: update`, adecuada para desarrollo, pero no recomendada para producción sin un control formal de migraciones.
-
-## Ejecución local
-
-### Requisitos previos
-
-- Java 17
-- Maven 3.9+
-- PostgreSQL
-
-### 1. Clonar repositorio
-
-```bash
-git clone -b HU-doc-dev https://github.com/jose6668/FarmaExpres_Micro_Inventory.git
-cd FarmaExpres_Micro_Inventory/inventory-service
-```
-
-### 2. Definir variables de entorno
-
-En Linux/macOS:
-
-```bash
-export DB_URL=jdbc:postgresql://localhost:5432/inventory_db
-export DB_USERNAME=postgres
-export DB_PASSWORD=postgres
-export JWT_SECRET=tu_clave_jwt
-```
-
-En Windows PowerShell:
-
-```powershell
-$env:DB_URL="jdbc:postgresql://localhost:5432/inventory_db"
-$env:DB_USERNAME="postgres"
-$env:DB_PASSWORD="postgres"
-$env:JWT_SECRET="tu_clave_jwt"
-```
-
-### 3. Ejecutar el servicio
-
-Con Maven Wrapper:
-
-```bash
-./mvnw spring-boot:run
-```
-
-O con Maven instalado:
-
-```bash
-mvn spring-boot:run
-```
-
-El servicio quedará disponible en:
-
-```text
-http://localhost:8082
-```
-
-## Ejecución con Docker
-
-El proyecto incluye un `Dockerfile` multi-stage que compila el servicio con Maven y ejecuta el `.jar` sobre Eclipse Temurin 17. Expone el puerto `8082`.
-
-### Construir imagen
-
-```bash
-docker build -t inventory-service .
-```
-
-### Ejecutar contenedor
-
-```bash
-docker run -p 8082:8082 \
-  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/inventory_db \
-  -e DB_USERNAME=postgres \
-  -e DB_PASSWORD=postgres \
-  -e JWT_SECRET=tu_clave_jwt \
-  inventory-service
-```
-
-## Endpoints principales
-
-### Estado del servicio
-
-```http
-GET /status
-```
-
-### Monitoreo
-
-```http
-GET /actuator/health
-GET /actuator/info
-```
-
-### Productos
-
-```http
-POST   /api/products
-PUT    /api/products/{id}
-DELETE /api/products/{id}
-GET    /api/products
-GET    /api/products/Assets
-GET    /api/products/out-of-stock
-```
-
-La API también acepta `/api/products/Assets` como ruta alternativa para productos activos, aunque sería preferible unificar la convención de nombres.
-
-## Ejemplo de payload para crear o actualizar producto
-
+**Request body**
 ```json
 {
   "name": "Acetaminofén 500mg",
   "code": "MED-001",
   "stock": 100,
+  "minimumStock": 20,
   "unitPrice": 8500,
   "expirationDate": "2027-12-31"
 }
 ```
 
-Campos esperados según la entidad `Product`.
+**Notes**
+- The product code must be unique.
+- A movement of type `Entrance` is generated automatically after creation.
 
-## Respuestas de error
+---
 
-El servicio cuenta con un manejador global de excepciones que retorna una estructura uniforme con información como:
+#### `GET /api/products`
+Returns the list of registered products.
 
-- fecha y hora
-- código HTTP
-- error
-- mensaje
-- ruta
-- nombre del servicio
+**Example response**
+```json
+[
+  {
+    "id": 1,
+    "name": "Acetaminofén 500mg",
+    "code": "MED-001",
+    "stock": 100,
+    "minimumStock": 20,
+    "unitPrice": 8500,
+    "active": true,
+    "expirationDate": "2027-12-31"
+  }
+]
+```
 
-Esto facilita depuración e integración entre microservicios.
+---
 
-## Pruebas
+#### `GET /api/products/Assets`
+Returns the list of active products.
 
-El proyecto incluye dependencias de pruebas para Spring Boot, JPA, seguridad y REST Docs. Actualmente se observa al menos una prueba básica de carga de contexto en `ProductoControllerIntegrationTest`.
+**Example response**
+```json
+[
+  {
+    "id": 1,
+    "name": "Acetaminofén 500mg",
+    "code": "MED-001",
+    "stock": 100,
+    "minimumStock": 20,
+    "unitPrice": 8500,
+    "active": true,
+    "expirationDate": "2027-12-31"
+  }
+]
+```
 
-Ejecución:
+---
+
+#### `GET /api/products/out-of-stock`
+Returns the list of products with stock equal to `0`.
+
+**Example response**
+```json
+[
+  {
+    "id": 2,
+    "name": "Ibuprofeno 400mg",
+    "code": "MED-002",
+    "stock": 0,
+    "minimumStock": 10
+  }
+]
+```
+
+---
+
+#### `PUT /api/products/{id}`
+Updates an existing product.
+
+**Request body**
+```json
+{
+  "name": "Acetaminofén 500mg",
+  "code": "MED-001",
+  "stock": 80,
+  "minimumStock": 15,
+  "unitPrice": 9000,
+  "expirationDate": "2027-12-31"
+}
+```
+
+**Notes**
+- The service updates stock and minimum stock.
+- A movement of type `Entrance`, `Exit`, or `Updated` is generated depending on the stock difference.
+- It is recommended to send all required fields in the request body.
+
+---
+
+#### `DELETE /api/products/{id}`
+Performs a logical deletion of a product.
+
+**Example response**
+```json
+{
+  "message": "Product deleted successfully"
+}
+```
+
+**Notes**
+- The product is not physically removed from the database.
+- The service changes `active` to `false`.
+- A movement of type `Deleted` is generated.
+
+---
+
+### 2. Inventory Movements
+
+#### `GET /api/motions`
+Returns the list of inventory movements.
+
+**Example response**
+```json
+[
+  {
+    "id": 1,
+    "type": "Entrance",
+    "amount": 100,
+    "dateTime": "2026-03-24T10:15:30",
+    "productName": "Acetaminofén 500mg"
+  }
+]
+```
+
+---
+
+#### `GET /api/motions/{id}`
+Returns a specific inventory movement by id.
+
+**Example response**
+```json
+{
+  "id": 1,
+  "type": "Entrance",
+  "amount": 100,
+  "dateTime": "2026-03-24T10:15:30",
+  "productName": "Acetaminofén 500mg"
+}
+```
+
+---
+
+### 3. Service Status
+
+#### `GET /status`
+Checks whether the service is running.
+
+#### `GET /actuator/health`
+Health check endpoint.
+
+#### `GET /actuator/info`
+General service information endpoint.
+
+---
+
+## Security
+
+The service uses **Spring Security + JWT** for authentication and authorization.
+
+### Authentication
+- JWT-based authentication
+- Requests to protected endpoints must include:
+
+```http
+Authorization: Bearer <token>
+```
+
+### Public Endpoints
+- `GET /status`
+- `GET /actuator/health`
+- `GET /actuator/info`
+- `GET /error`
+
+### Role-Based Authorization
+
+#### ADMIN
+Can access:
+- Create products
+- Update products
+- Delete products
+- View products
+- View movements
+
+#### FARMACEUTICO
+Can access:
+- View products
+
+#### AUDITOR
+Can access:
+- View products
+- View movements
+
+---
+
+## Business Rules
+
+The service implements the following business rules:
+
+- Product code must be unique
+- `stock` must be greater than or equal to `0`
+- `minimumStock` must be greater than or equal to `0`
+- Inactive products cannot be modified
+- Product deletion is logical, not physical
+- Product creation generates an `Entrance` movement
+- Product update generates `Entrance`, `Exit`, or `Updated` depending on stock changes
+- Product deletion generates a `Deleted` movement
+
+---
+
+## Error Handling
+
+The service includes centralized exception management through `GlobalExceptionHandler`.
+
+Error responses are returned using a structured format similar to:
+
+```json
+{
+  "timestamp": "2026-03-24T17:27:43.745198631",
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "Ocurrió un error interno en inventory-service",
+  "path": "/api/products/1",
+  "service": "inventory-service"
+}
+```
+
+**Recommended behavior**
+- `400 Bad Request` for invalid input or business validation errors
+- `404 Not Found` for missing resources
+- `409 Conflict` for duplicate product codes
+- `500 Internal Server Error` only for unexpected failures
+
+---
+
+## Configuration
+
+Required environment variables:
+
+- `DB_URL`  
+  PostgreSQL connection URL  
+  Example: `jdbc:postgresql://localhost:5432/inventorydb`
+
+- `DB_USERNAME`  
+  Database username
+
+- `DB_PASSWORD`  
+  Database password
+
+- `JWT_SECRET`  
+  Secret key used to validate JWT tokens
+
+---
+
+## Run Locally
+
+### Prerequisites
+- Java 17
+- PostgreSQL
+- Maven
+
+### Environment Variables
+```bash
+export DB_URL=jdbc:postgresql://localhost:5432/inventorydb
+export DB_USERNAME=your_username
+export DB_PASSWORD=your_password
+export JWT_SECRET=your_secret_key
+```
+
+### Start the application
+```bash
+cd inventory-service
+./mvnw spring-boot:run
+```
+
+---
+
+## Run with Docker
+
+```bash
+docker build -t inventory-service .
+docker run -p 8082:8082 --env-file .env inventory-service
+```
+
+---
+
+## Testing
+
+Run tests with:
 
 ```bash
 ./mvnw test
 ```
+
