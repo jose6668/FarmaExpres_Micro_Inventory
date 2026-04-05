@@ -10,7 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 import co.edu.corhuila.inventory_service.Dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 
 @RestControllerAdvice
@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
 
         ApiErrorResponse error = new ApiErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 status.value(),
                 status.getReasonPhrase(),
                 ex.getReason(),
@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request) {
 
         ApiErrorResponse error = new ApiErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Internal Server Error",
                 "Ocurrió un error interno en inventory-service",

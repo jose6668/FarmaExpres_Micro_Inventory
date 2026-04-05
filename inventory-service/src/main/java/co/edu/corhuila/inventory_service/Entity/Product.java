@@ -17,6 +17,18 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "nombre_generico")
+    private String nombreGenerico;
+
+    @Column(name = "concentracion")
+    private String concentracion;
+
+    @Column(name = "forma_farmaceutica")
+    private String formaFarmaceutica;
+
+    @Column(name = "presentacion")
+    private String presentacion;
+
     @Column(unique = true, nullable = false)
     private String code;
 
@@ -25,6 +37,39 @@ public class Product {
 
     @Column(name = "unitprice", nullable = false)
     private BigDecimal unitPrice;
+
+    @Column(name = "stock_maximo")
+    private Integer stockMaximo;
+
+    @Column(name = "precio_compra")
+    private BigDecimal precioCompra;
+
+    @Column(name = "precio_venta")
+    private BigDecimal precioVenta;
+
+    @Column(name = "requiere_receta")
+    private Boolean requiereReceta;
+
+    @Column(name = "laboratorio")
+    private String laboratorio;
+
+    @Column(name = "registro_sanitario")
+    private String registroSanitario;
+
+    @Column(name = "via_administracion")
+    private String viaAdministracion;
+
+    @Column(name = "unidad_medida")
+    private String unidadMedida;
+
+    @Column(name = "ubicacion_almacen")
+    private String ubicacionAlmacen;
+
+    @Column(name = "temperatura_conservacion")
+    private String temperaturaConservacion;
+
+    @Column(name = "observaciones", length = 2000)
+    private String observaciones;
 
     @Column(name = "asset", nullable = false)
     private Boolean active = true;
@@ -62,12 +107,72 @@ public class Product {
         return code;
     }
 
+    public String getNombreGenerico() {
+        return nombreGenerico;
+    }
+
+    public String getConcentracion() {
+        return concentracion;
+    }
+
+    public String getFormaFarmaceutica() {
+        return formaFarmaceutica;
+    }
+
+    public String getPresentacion() {
+        return presentacion;
+    }
+
     public Integer getStock() {
         return stock;
     }
 
     public BigDecimal getUnitPrice() {
         return unitPrice;
+    }
+
+    public Integer getStockMaximo() {
+        return stockMaximo;
+    }
+
+    public BigDecimal getPrecioCompra() {
+        return precioCompra;
+    }
+
+    public BigDecimal getPrecioVenta() {
+        return precioVenta;
+    }
+
+    public Boolean getRequiereReceta() {
+        return requiereReceta;
+    }
+
+    public String getLaboratorio() {
+        return laboratorio;
+    }
+
+    public String getRegistroSanitario() {
+        return registroSanitario;
+    }
+
+    public String getViaAdministracion() {
+        return viaAdministracion;
+    }
+
+    public String getUnidadMedida() {
+        return unidadMedida;
+    }
+
+    public String getUbicacionAlmacen() {
+        return ubicacionAlmacen;
+    }
+
+    public String getTemperaturaConservacion() {
+        return temperaturaConservacion;
+    }
+
+    public String getObservaciones() {
+        return observaciones;
     }
 
 
@@ -89,12 +194,72 @@ public class Product {
         this.code = code;
     }
 
+    public void setNombreGenerico(String nombreGenerico) {
+        this.nombreGenerico = nombreGenerico;
+    }
+
+    public void setConcentracion(String concentracion) {
+        this.concentracion = concentracion;
+    }
+
+    public void setFormaFarmaceutica(String formaFarmaceutica) {
+        this.formaFarmaceutica = formaFarmaceutica;
+    }
+
+    public void setPresentacion(String presentacion) {
+        this.presentacion = presentacion;
+    }
+
     public void setStock(Integer stock) {
         this.stock = stock;
     }
 
     public void setUnitPrice(BigDecimal unitPrice) {
         this.unitPrice = unitPrice;
+    }
+
+    public void setStockMaximo(Integer stockMaximo) {
+        this.stockMaximo = stockMaximo;
+    }
+
+    public void setPrecioCompra(BigDecimal precioCompra) {
+        this.precioCompra = precioCompra;
+    }
+
+    public void setPrecioVenta(BigDecimal precioVenta) {
+        this.precioVenta = precioVenta;
+    }
+
+    public void setRequiereReceta(Boolean requiereReceta) {
+        this.requiereReceta = requiereReceta;
+    }
+
+    public void setLaboratorio(String laboratorio) {
+        this.laboratorio = laboratorio;
+    }
+
+    public void setRegistroSanitario(String registroSanitario) {
+        this.registroSanitario = registroSanitario;
+    }
+
+    public void setViaAdministracion(String viaAdministracion) {
+        this.viaAdministracion = viaAdministracion;
+    }
+
+    public void setUnidadMedida(String unidadMedida) {
+        this.unidadMedida = unidadMedida;
+    }
+
+    public void setUbicacionAlmacen(String ubicacionAlmacen) {
+        this.ubicacionAlmacen = ubicacionAlmacen;
+    }
+
+    public void setTemperaturaConservacion(String temperaturaConservacion) {
+        this.temperaturaConservacion = temperaturaConservacion;
+    }
+
+    public void setObservaciones(String observaciones) {
+        this.observaciones = observaciones;
     }
 
     public void setExpirationDate(LocalDate expirationDate) {

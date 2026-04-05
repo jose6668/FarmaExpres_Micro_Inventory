@@ -1,17 +1,17 @@
 package co.edu.corhuila.inventory_service.Dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public class ApiErrorResponse {
 
-     private LocalDateTime timestamp;
+     private Instant timestamp;
     private int status;
     private String error;
     private String message;
     private String path;
     private String service;
 
-    public ApiErrorResponse(LocalDateTime timestamp, int status, String error,
+    public ApiErrorResponse(Instant timestamp, int status, String error,
                             String message, String path, String service) {
         this.timestamp = timestamp;
         this.status = status;
@@ -21,7 +21,7 @@ public class ApiErrorResponse {
         this.service = service;
     }
 
-    public LocalDateTime getTimestamp() {
+    public Instant getTimestamp() {
         return timestamp;
     }
 

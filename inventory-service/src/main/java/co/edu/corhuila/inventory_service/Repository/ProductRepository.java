@@ -13,6 +13,4 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findAll();
     
     List<Product> findByActiveTrue();
-
-    List<Product> findByStockAndActiveTrue(Integer stock);
 }

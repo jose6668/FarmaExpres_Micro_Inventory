@@ -9,7 +9,11 @@ import java.util.List;
 
 public interface MotionRepository extends JpaRepository<Motion, Long> {
 
+    List<Motion> findByType(MovementType type);
 
+    List<Motion> findAllByOrderByDateTimeDesc();
 
-    List<Motion> findByType(MovementType Type);
+    List<Motion> findByUserIdOrderByDateTimeDesc(Long userId);
+
+    List<Motion> findByBatchIsNotNullOrderByDateTimeDesc();
 }
