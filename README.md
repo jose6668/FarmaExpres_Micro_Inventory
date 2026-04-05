@@ -1,452 +1,229 @@
-# FarmaExpres_Micro_Inventory
+# FarmaExpres Micro Inventory
 
+Microservicio de inventario para el ecosistema FarmaExpres. Este servicio administra productos farmaceuticos, lotes, movimientos de inventario, consultas FEFO, reportes operativos y endpoints de salud.
 
-### Overview
-`inventory-service` is a Spring Boot microservice responsible for product inventory management in the FarmaExpres ecosystem.
+## Alcance actual
 
-It provides:
-- Product creation and administration
-- Product update with stock and minimum stock control
-- Logical product deletion
-- Product listing and active product filtering
-- Out-of-stock product queries
-- Inventory movement tracking
-- Service health and status endpoints
+El modulo `inventory-service` permite:
 
----
+- Crear, consultar, actualizar y retirar logicamente productos.
+- Gestionar inventario por lotes con fecha de vencimiento y estado operativo.
+- Registrar entradas y salidas de inventario.
+- Consumir stock siguiendo FEFO (`First Expired, First Out`).
+- Consultar productos activos, agotados y con stock bajo.
+- Generar reportes de lotes, movimientos por lote y actividad de usuarios.
+- Proteger endpoints con Spring Security y JWT.
 
-## Technologies Used
+## Tecnologias
 
-- **Java 17**
-- **Spring Boot**
-- **Spring Security**
-- **JWT**
-- **PostgreSQL**
-- **Spring Data JPA / Hibernate**
-- **Maven**
-- **Docker**
-- **Spring Boot Actuator**
+- Java 17
+- Spring Boot 4.0.3
+- Spring Web MVC
+- Spring Data JPA
+- Spring Security
+- JWT (`jjwt`)
+- PostgreSQL
+- Maven Wrapper
+- Docker
+- Spring Boot Actuator
 
----
-
-## Implemented Architecture
-
-The service follows a layered architecture:
-
-- **Controllers**: expose REST endpoints
-- **Services**: implement business logic
-- **Repositories**: manage persistence with Spring Data JPA
-- **Entities**: represent domain objects
-- **DTOs**: define request and response payloads
-- **Config**: security and filter configuration
-- **Exception Handling**: centralized error handling with `GlobalExceptionHandler`
-
----
-
-## Project Structure
+## Estructura del proyecto
 
 ```text
-inventory-service/
-├── src/main/java/co/edu/corhuila/inventory_service/
-│   ├── InventoryServiceApplication.java
-│   ├── Config/
-│   │   └── SecurityConfig.java
-│   ├── Controllers/
-│   │   ├── ProductController.java
-│   │   ├── MotionController.java
-│   │   └── StatusController.java
-│   ├── Service/
-│   │   ├── ProductService.java
-│   │   ├── MotionService.java
-│   │   ├── JwtFilter.java
-│   │   └── JwtService.java
-│   ├── Entity/
-│   │   ├── Product.java
-│   │   ├── Motion.java
-│   │   └── MovementType.java
-│   ├── Repository/
-│   │   ├── ProductRepository.java
-│   │   └── MotionRepository.java
-│   ├── Dto/
-│   │   ├── ApiErrorResponse.java
-│   │   ├── MotionResponse.java
-│   │   └── ProductOutOfStockResponse.java
-│   └── exception/
-│       └── GlobalExceptionHandler.java
-├── src/main/resources/
-│   └── application.yaml
-├── Dockerfile
-├── pom.xml
-└── mvnw*
+FarmaExpres_Micro_Inventory/
+|-- README.md
+`-- inventory-service/
+    |-- Dockerfile
+    |-- mvnw
+    |-- mvnw.cmd
+    |-- pom.xml
+    `-- src/
+        |-- main/
+        |   |-- java/co/edu/corhuila/inventory_service/
+        |   |   |-- Config/
+        |   |   |-- Controllers/
+        |   |   |-- Dto/
+        |   |   |-- Entity/
+        |   |   |-- Repository/
+        |   |   |-- Service/
+        |   |   |-- exception/
+        |   |   |-- InventoryServiceApplication.java
+        |   |   `-- StatusController.java
+        |   `-- resources/
+        |       `-- application.yaml
+        `-- test/
+            `-- java/co/edu/corhuila/inventory_service/
 ```
 
----
+## Componentes principales
 
-## Domain Model
+### Productos
 
-The inventory-service is built around three main domain components:
+La entidad `Product` almacena informacion operativa y farmaceutica del medicamento:
 
-### Product
-Represents an inventory product managed by the service.
+- Identificacion: `id`, `code`, `name`, `nombreGenerico`
+- Clasificacion: `concentracion`, `formaFarmaceutica`, `presentacion`
+- Inventario: `stock`, `minimumStock`, `stockMaximo`, `active`
+- Costos: `unitPrice`, `precioCompra`, `precioVenta`
+- Control sanitario: `requiereReceta`, `registroSanitario`, `laboratorio`
+- Logistica: `viaAdministracion`, `unidadMedida`, `ubicacionAlmacen`, `temperaturaConservacion`
+- Trazabilidad: `expirationDate`, `observaciones`
 
-**Main attributes:**
-- `id`: unique product identifier
-- `name`: product name
-- `code`: unique product code
-- `stock`: current stock available
-- `minimumStock`: minimum stock threshold
-- `unitPrice`: unit price of the product
-- `active`: logical state of the product
-- `expirationDate`: product expiration date
+### Lotes
 
-**Responsibilities:**
-- Store inventory product information
-- Maintain stock and minimum stock values
-- Support logical deletion through the `active` field
-- Provide the base entity for inventory movement registration
+La entidad `Batch` modela el inventario real por lote:
 
----
+- `batchCode`
+- `expirationDate`
+- `initialStock`
+- `availableStock`
+- `status`: `ACTIVE`, `OUT_OF_STOCK`, `EXPIRED`, `RETIRED`
 
-### Motion
-Represents an inventory movement generated by product operations.
+El stock operativo del producto se recalcula a partir de los lotes consumibles.
 
-**Main attributes:**
-- `id`: unique movement identifier
-- `type`: type of inventory movement
-- `amount`: quantity associated with the movement
-- `dateTime`: date and time of the event
-- `product`: related product
+### Movimientos
 
-**Responsibilities:**
-- Track inventory changes over time
-- Register stock entries, exits, updates, and deletions
-- Provide traceability for inventory operations
+La entidad `Motion` registra trazabilidad del inventario:
 
----
+- `type`: `Entrance`, `Exit`, `Updated`, `Deleted`
+- `amount`
+- `dateTime`
+- `reason`
+- Datos del usuario autenticado: `userId`, `userName`, `userEmail`, `userRole`
+- Relacion opcional con `Batch`
 
-### MovementType
-Represents the type of movement registered in inventory operations.
+## Endpoints principales
 
-**Supported values:**
-- `Entrance`
-- `Updated`
-- `Exit`
-- `Deleted`
+### Productos
 
-This enum is used to classify the reason and nature of each movement recorded in the system.
+- `POST /api/products`: crea un producto y genera movimiento inicial.
+- `GET /api/products`: lista todos los productos.
+- `GET /api/products/{id}`: consulta un producto por id.
+- `PUT /api/products/{id}`: actualiza metadatos del producto.
+- `DELETE /api/products/{id}`: retiro logico del producto.
+- `GET /api/products/assets` y `GET /api/products/active`: lista productos activos.
+- `GET /api/products/out-of-stock`: lista productos agotados.
+- `GET /api/products/low-stock`: reporte de stock bajo.
+- `GET /api/products/low-stock/critical`: productos en estado critico.
+- `GET /api/products/low-stock/alert`: productos en alerta.
+- `GET /api/products/active-table`: tabla resumida de inventario activo.
+- `GET /api/products/active-summary`: resumen consolidado de stock y valor.
+- `GET /api/products/fefo-snapshot`: proximo lote a consumir por producto.
+- `GET /api/products/{productId}/batches`: lotes de un producto.
+- `POST /api/products/{productId}/batches`: crea un lote manualmente.
 
----
+### Movimientos
 
-## Main Endpoints
+- `GET /api/movements`: lista movimientos.
+- `GET /api/movements/filter-by-user?userId=`: filtra por usuario.
+- `GET /api/movements/entrance`: lista entradas.
+- `GET /api/movements/exit`: lista salidas.
+- `GET /api/movements/updated`: lista ajustes.
+- `GET /api/movements/report/users-activity?role=`: actividad por rol o usuario.
+- `POST /api/movements`: registra movimiento directo sobre un lote.
+- `POST /api/movements/entries`: registra entrada con creacion automatica de lote.
+- `POST /api/movements/exits`: registra salida descontando stock disponible.
+- `POST /api/movements/consume-fefo`: consume stock siguiendo FEFO.
 
-The service exposes endpoints for product management, inventory movement queries, and health monitoring.
+Alias heredados:
 
-### 1. Product Management
+- `GET /api/motions`
+- `GET /api/Motion`
 
-#### `POST /api/products`
-Creates a new product.
+### Reportes
 
-**Request body**
-```json
-{
-  "name": "Acetaminofén 500mg",
-  "code": "MED-001",
-  "stock": 100,
-  "minimumStock": 20,
-  "unitPrice": 8500,
-  "expirationDate": "2027-12-31"
-}
-```
+- `GET /api/reports/inventory-batches`: reporte de inventario por lote.
+- `GET /api/reports/movements-batches`: reporte de movimientos asociados a lotes.
 
-**Notes**
-- The product code must be unique.
-- A movement of type `Entrance` is generated automatically after creation.
+### Salud del servicio
 
----
+- `GET /status`
+- `GET /actuator/health`
+- `GET /actuator/info`
 
-#### `GET /api/products`
-Returns the list of registered products.
+## Seguridad
 
-**Example response**
-```json
-[
-  {
-    "id": 1,
-    "name": "Acetaminofén 500mg",
-    "code": "MED-001",
-    "stock": 100,
-    "minimumStock": 20,
-    "unitPrice": 8500,
-    "active": true,
-    "expirationDate": "2027-12-31"
-  }
-]
-```
-
----
-
-#### `GET /api/products/Assets`
-Returns the list of active products.
-
-**Example response**
-```json
-[
-  {
-    "id": 1,
-    "name": "Acetaminofén 500mg",
-    "code": "MED-001",
-    "stock": 100,
-    "minimumStock": 20,
-    "unitPrice": 8500,
-    "active": true,
-    "expirationDate": "2027-12-31"
-  }
-]
-```
-
----
-
-#### `GET /api/products/out-of-stock`
-Returns the list of products with stock equal to `0`.
-
-**Example response**
-```json
-[
-  {
-    "id": 2,
-    "name": "Ibuprofeno 400mg",
-    "code": "MED-002",
-    "stock": 0,
-    "minimumStock": 10
-  }
-]
-```
-
----
-
-#### `PUT /api/products/{id}`
-Updates an existing product.
-
-**Request body**
-```json
-{
-  "name": "Acetaminofén 500mg",
-  "code": "MED-001",
-  "stock": 80,
-  "minimumStock": 15,
-  "unitPrice": 9000,
-  "expirationDate": "2027-12-31"
-}
-```
-
-**Notes**
-- The service updates stock and minimum stock.
-- A movement of type `Entrance`, `Exit`, or `Updated` is generated depending on the stock difference.
-- It is recommended to send all required fields in the request body.
-
----
-
-#### `DELETE /api/products/{id}`
-Performs a logical deletion of a product.
-
-**Example response**
-```json
-{
-  "message": "Product deleted successfully"
-}
-```
-
-**Notes**
-- The product is not physically removed from the database.
-- The service changes `active` to `false`.
-- A movement of type `Deleted` is generated.
-
----
-
-### 2. Inventory Movements
-
-#### `GET /api/motions`
-Returns the list of inventory movements.
-
-**Example response**
-```json
-[
-  {
-    "id": 1,
-    "type": "Entrance",
-    "amount": 100,
-    "dateTime": "2026-03-24T10:15:30",
-    "productName": "Acetaminofén 500mg"
-  }
-]
-```
-
----
-
-#### `GET /api/motions/{id}`
-Returns a specific inventory movement by id.
-
-**Example response**
-```json
-{
-  "id": 1,
-  "type": "Entrance",
-  "amount": 100,
-  "dateTime": "2026-03-24T10:15:30",
-  "productName": "Acetaminofén 500mg"
-}
-```
-
----
-
-### 3. Service Status
-
-#### `GET /status`
-Checks whether the service is running.
-
-#### `GET /actuator/health`
-Health check endpoint.
-
-#### `GET /actuator/info`
-General service information endpoint.
-
----
-
-## Security
-
-The service uses **Spring Security + JWT** for authentication and authorization.
-
-### Authentication
-- JWT-based authentication
-- Requests to protected endpoints must include:
+La autenticacion se realiza por JWT usando el encabezado:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-### Public Endpoints
-- `GET /status`
-- `GET /actuator/health`
-- `GET /actuator/info`
-- `GET /error`
+Endpoints publicos:
 
-### Role-Based Authorization
+- `/status`
+- `/actuator/health`
+- `/actuator/info`
+- `/error`
 
-#### ADMIN
-Can access:
-- Create products
-- Update products
-- Delete products
-- View products
-- View movements
+Autorizacion principal por rol:
 
-#### FARMACEUTICO
-Can access:
-- View products
+- `ADMIN`: administra productos, consulta reportes y puede ejecutar movimientos.
+- `FARMACEUTICO`: consulta productos, registra entradas y salidas, consulta FEFO.
+- `AUDITOR`: consulta productos, movimientos y reportes.
 
-#### AUDITOR
-Can access:
-- View products
-- View movements
+## Reglas de negocio relevantes
 
----
+- El codigo del producto debe ser unico.
+- No se pueden modificar productos retirados.
+- El retiro de producto es logico; no elimina fisicamente el registro.
+- Al crear un producto se crea un lote inicial `INIT-<codigo>` y un movimiento `Entrance`.
+- El stock del producto se deriva de los lotes activos y no vencidos.
+- Los lotes vencidos o agotados dejan de aportar al stock operativo.
+- Las entradas crean un lote nuevo con cantidad y fecha de vencimiento.
+- Las salidas validan stock total disponible y pueden ejecutarse con FEFO.
+- Los motivos de entrada y salida estan restringidos por validacion.
 
-## Business Rules
+## Variables de entorno
 
-The service implements the following business rules:
+Definidas en `inventory-service/src/main/resources/application.yaml`:
 
-- Product code must be unique
-- `stock` must be greater than or equal to `0`
-- `minimumStock` must be greater than or equal to `0`
-- Inactive products cannot be modified
-- Product deletion is logical, not physical
-- Product creation generates an `Entrance` movement
-- Product update generates `Entrance`, `Exit`, or `Updated` depending on stock changes
-- Product deletion generates a `Deleted` movement
+- `DB_URL`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `JWT_SECRET`
 
----
+Ejemplo en PowerShell:
 
-## Error Handling
-
-The service includes centralized exception management through `GlobalExceptionHandler`.
-
-Error responses are returned using a structured format similar to:
-
-```json
-{
-  "timestamp": "2026-03-24T17:27:43.745198631",
-  "status": 500,
-  "error": "Internal Server Error",
-  "message": "Ocurrió un error interno en inventory-service",
-  "path": "/api/products/1",
-  "service": "inventory-service"
-}
+```powershell
+$env:DB_URL="jdbc:postgresql://localhost:5432/inventorydb"
+$env:DB_USERNAME="postgres"
+$env:DB_PASSWORD="tu_clave"
+$env:JWT_SECRET="tu_secreto_jwt"
 ```
 
-**Recommended behavior**
-- `400 Bad Request` for invalid input or business validation errors
-- `404 Not Found` for missing resources
-- `409 Conflict` for duplicate product codes
-- `500 Internal Server Error` only for unexpected failures
+## Ejecucion local
 
----
+Prerrequisitos:
 
-## Configuration
-
-Required environment variables:
-
-- `DB_URL`  
-  PostgreSQL connection URL  
-  Example: `jdbc:postgresql://localhost:5432/inventorydb`
-
-- `DB_USERNAME`  
-  Database username
-
-- `DB_PASSWORD`  
-  Database password
-
-- `JWT_SECRET`  
-  Secret key used to validate JWT tokens
-
----
-
-## Run Locally
-
-### Prerequisites
 - Java 17
 - PostgreSQL
-- Maven
 
-### Environment Variables
-```bash
-export DB_URL=jdbc:postgresql://localhost:5432/inventorydb
-export DB_USERNAME=your_username
-export DB_PASSWORD=your_password
-export JWT_SECRET=your_secret_key
-```
+Desde la carpeta del microservicio:
 
-### Start the application
-```bash
+```powershell
 cd inventory-service
-./mvnw spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
----
+El servicio inicia en `http://localhost:8082`.
 
-## Run with Docker
+## Docker
 
-```bash
+Desde `inventory-service`:
+
+```powershell
 docker build -t inventory-service .
 docker run -p 8082:8082 --env-file .env inventory-service
 ```
 
----
+## Pruebas
 
-## Testing
+Hay pruebas en `src/test` para arranque, JWT, productos y movimientos.
 
-Run tests with:
+Para ejecutarlas:
 
-```bash
-./mvnw test
+```powershell
+cd inventory-service
+.\mvnw.cmd test
 ```
-
