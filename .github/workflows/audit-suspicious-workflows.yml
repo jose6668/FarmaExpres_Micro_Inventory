@@ -1,0 +1,74 @@
+name: Audit suspicious workflows
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+  push:
+    paths:
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Scan workflow changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_ref="${{ github.event.pull_request.base.sha }}"
+          else
+            base_ref="${{ github.event.before }}"
+          fi
+
+          if [ -z "$base_ref" ] || ! git cat-file -e "$base_ref"^{commit} 2>/dev/null; then
+            base_ref="HEAD~1"
+          fi
+
+          changed=$(git diff --name-only "$base_ref" HEAD -- ".github/workflows/")
+          if [ -z "$changed" ]; then
+            echo "No workflow changes detected."
+            exit 0
+          fi
+
+          echo "Scanning workflows:"
+          echo "$changed"
+
+          patterns=(
+            "curl[[:space:]]+.*api\.github\.com/.*/delete"
+            "gh[[:space:]]+api[[:space:]]+.*method[[:space:]]+DELETE"
+            "aws[[:space:]]+s3[[:space:]]+rm"
+            "az[[:space:]]+storage[[:space:]]+blob[[:space:]]+delete"
+            "gcloud[[:space:]]+.*[[:space:]]+delete"
+            "kubectl[[:space:]]+delete"
+            "rm[[:space:]]+-rf"
+            "del[[:space:]]+/s"
+          )
+
+          found=0
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            for pattern in "${patterns[@]}"; do
+              if grep -EIn -- "$pattern" "$file" >/dev/null; then
+                echo "Dangerous pattern matched: $pattern in $file"
+                found=1
+              fi
+            done
+          done <<< "$changed"
+
+          if [ "$found" -eq 1 ]; then
+            echo "Suspicious workflow content detected."
+            exit 1
+          fi
+
+          echo "No suspicious workflow content detected."
